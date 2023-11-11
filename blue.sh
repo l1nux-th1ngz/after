@@ -1,0 +1,174 @@
+#!/bin/bash
+# Remove carriage returns from the script
+if [[ -n "$(tail -c 1 "$0" | tr -d '\r')" ]]; then
+    echo -e '\r' >> "$0"
+    exec "$0" "$@"
+fi
+
+# Define variables
+GREEN="$(tput setaf 2)[OK]$(tput sgr0)"
+RED="$(tput setaf 1)[ERROR]$(tput sgr0)"
+YELLOW="$(tput setaf 3)[NOTE]$(tput sgr0)"
+CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
+LOG="install.log"
+
+# Set the script to exit on error
+set -e
+
+printf "$(tput setaf 2)[OK]$(tput sgr0)\n"
+
+sleep 2
+
+printf "$YELLOW PLEASE BACKUP YOUR FILES BEFORE PROCEEDING!
+This script will overwrite some of your configs and files!"
+
+sleep 2
+
+printf "
+$YELLOW  Some commands require you to enter your password in order to execute
+If you are worried about entering your password, you can cancel the script now with CTRL Q or CTRL C and review the contents of this script. \n"
+
+sleep 3
+
+# Is yay(||)paru installed?
+ISyay=/sbin/yay
+
+if [ -f "$ISyay" ]; then
+    printf "\n%s - yay was located, moving on.\n" "$GREEN"
+else 
+    printf "\n%s - yay was NOT located\n" "$YELLOW"
+    read -n1 -rep "${CAT} Would you like to install yay(||)paru (Y)" INST
+    if [[ $INST =~ ^[Y]$ ]]; then
+        git clone https://aur.archlinux.org/yay.git
+        cd yay
+        makepkg -si --noconfirm 2>&1 | tee -a "$LOG"
+        cd ..
+        git clone https://aur.archlinux.org/paru.git
+        cd paru
+        makepkg -si --noconfirm 2>&1 | tee -a "$LOG"
+        cd ..
+    fi
+    # Update system before proceeding
+    printf "${YELLOW} System Update to avoid issues\n" 
+    yay -Syu --noconfirm 2>&1 | tee -a "$LOG"
+fi
+
+# Function to print error messages
+print_error() {
+    printf " %s%s\n" "$RED" "$1" >&2
+}
+
+# Function to print success messages
+print_success() {
+    printf "%s%s%s\n" "$GREEN" "$1" "$NC"
+}
+
+### Install packages ###
+read -n1 -rep "${CAT} Would you like to install the packages? (Y)" inst
+echo
+
+if [[ $inst =~ ^[Nn]$ ]]; then
+    printf "${YELLOW} No packages installed. Goodbye! \n"
+    exit 1
+fi
+
+if [[ $inst =~ ^[Y]$ ]]; then
+    yay -R --noconfirm swaylock waybar
+
+    (yay --noconfirm -S "grimblast-git waybar-hyprland-git" 
+     "waland-git" "wayland-protocols-git" "wayland-utils-git" "hyprland-git" "wlroots-git" "xdg-user-dir" "xdg-user-dirs-gtk" 
+     "xdg-user-dirs-update" "xdg-user-dirs-gtk-update" "dunst" "kitty" "alacrity" "ranger" "polkit-kde-agent" "firefox" "rofi" "wofi" 
+     "xdg-desktop-portal-hyprland-git" "xdg-desktop-portal-wlr-git" "xdg-desktop-portal-gtk-git" "waybar-hyprland-git" "qt5-wayland"
+      "qt6-wayland" "pipewire" "wireplumber"
+     "mako" "cliphist" "clipman" "udiskie" "udisks2" "google-chrome" "vivaldi" "marker" "typhora"
+     "ffmpeg" "ffmpegthumbnailer" "ffmpegthumbs" "vivaldi-ffmpeg-codecs" "python-adblock" "brave-bin" "chromium" "ascii" "aalib" "jp2a" "imv"
+      "jq" "i2pd" "mpd" "mpc" "spotify" "cantata" "playerctl" "brightnessctl" "vlc" "spotify-adblock-git"
+     "gdb" "ninja" "gcc" "cmake" "meson" "libxcb" "xcb-proto" "xcb-util" "xcb-util-keysyms" "libxfixes" "libx11"
+      "libxcomposite" "xorg-xinput" "libxrender" "pixman" "cairo" "pango" "seatd" "libxkbcommon" "xcb-util-wm"
+       "xorg-xwayland" "libinput" "libliftoff" "libdisplay-info" "cpio"
+   "ttf-nerd-fonts-symbols-common otf-firamono-nerd inter-font otf-sora ttf-fantasque-nerd noto-fonts noto-fonts-emoji ttf-comfortaa"
+   "ttf-jetbrains-mono-nerd ttf-icomoon-feather ttf-iosevka-nerd adobe-source-code-pro-fonts"
+   "nwg-look-bin qt5ct btop jq gvfs ffmpegthumbs swww mousepad mpv  playerctl pamixer noise-suppression-for-voice"
+   "polkit-gnome ffmpeg neovim viewnior pavucontrol thunar ffmpegthumbnailer xdg-user-dirs-gtk xdg-user-dirs"
+   "nordic-theme papirus-icon-theme starship" )
+
+    xdg-user-dirs-update
+    xdg-user-dirs-gtk-update
+
+    echo
+    print_success "All necessary packages installed successfully."
+else
+    echo
+    print_error "Packages not installed - please check the install.log"
+    sleep 1
+fi
+
+### Copy Config Files ###
+read -n1 -rep "${CAT} Would you like to copy config files? (y,n)" CFG
+if [[ $CFG =~ ^[Yy]$ ]]; then
+    printf "Copying config files...\n"
+    cp -r dotconfig/dunst ~/.config/ 2>&1 | tee -a "$LOG"
+    cp -r dotconfig/hypr ~/.config/ 2>&1 | tee -a "$LOG"
+    cp -r dotconfig/kitty ~/.config/ 2>&1 | tee -a "$LOG"
+    cp -r dotconfig/pipewire ~/.config/ 2>&1 | tee -a "$LOG"
+    cp -r dotconfig/rofi ~/.config/ 2>&1 | tee -a "$LOG"
+    cp -r dotconfig/swaylock ~/.config/ 2>&1 | tee -a "$LOG"
+    cp -r dotconfig/waybar ~/.config/ 2>&1 | tee -a "$LOG"
+    cp -r dotconfig/wlogout ~/.config/ 2>&1 | tee -a "$LOG"
+    
+    # Set some files as executable 
+    chmod +x ~/.config/hypr/xdg-portal-hyprland
+    chmod +x ~/.config/waybar/scripts/waybar-wttr.py
+fi
+
+### Add Fonts for Waybar ###
+mkdir -p "$HOME/Downloads/nerdfonts/"
+cd "$HOME/Downloads/"
+wget https://github.com/ryanoasis/nerd-fonts/releases/download/v2.3.1/CascadiaCode.zip
+unzip '*.zip' -d "$HOME/Downloads/nerdfonts/"
+rm -rf *.zip
+sudo cp -R "$HOME/Downloads/nerdfonts/" /usr/share/fonts/
+
+fc-cache -rv  
+
+### Enable SDDM Autologin ###
+read -n1 -rep 'Would you like to enable SDDM autologin? (y,n)' SDDM
+if [[ $SDDM == "Y" || $SDDM == "y" ]]; then
+    LOC="/etc/sddm.conf"
+    echo -e "The following has been added to $LOC.\n"
+    echo -e "[Autologin]\nUser = $(whoami)\nSession=hyprland" | sudo tee -a "$LOC"
+    echo -e "\n"
+    echo -e "Enabling SDDM service...\n"
+    sudo systemctl enable sddm
+    sleep 3
+fi
+
+# BLUETOOTH
+read -n1 -rep "${CAT} OPTIONAL - Would you like to install Bluetooth packages? (y/n)" BLUETOOTH
+if [[ $BLUETOOTH =~ ^[Yy]$ ]]; then
+    printf "Installing Bluetooth Packages...\n"
+    blue_pkgs="bluez bluez-utils blueman"
+    if ! yay -S --noconfirm "$blue_pkgs" 2>&1 | tee -a "$LOG"; then
+        print_error "Failed to install Bluetooth packages - please check the install.log"    
+    fi
+    printf "Activating Bluetooth Services...\n"
+    sudo systemctl enable --now bluetooth.service
+    sleep 2
+else
+    printf "${YELLOW}No Bluetooth packages installed..\n"
+fi
+    
+### Script is done ###
+printf "\n${GREEN}Installation Completed.\n"
+echo -e "${GREEN}You can start Hyprland by typing Hyprland (note the capital H).\n"
+read -n1 -rep "${CAT} Would you like to start Hyprland now? (y,n)" HYP
+if [[ $HYP =~ ^[Yy]$ ]]; then
+    if command -v Hyprland >/dev/null; then
+        Hyprland
+    else
+        print_error "Hyprland not found. Please make sure Hyprland is installed by checking install.log.\n"
+        exit 1
+    fi
+else
+    exit
+fi
