@@ -26,25 +26,25 @@ If you are worried about entering your password, you can cancel the script now w
 sleep 3
 
 # Is yay(||)paru is installed?
-ISyay=/sbin/yay
+ISyay=/usr/bin/yay
 
 if [ -f "$ISyay" ]; then
     printf "\n%s - yay was located, moving on.\n" "$GREEN"
 else 
     printf "\n%s - yay was NOT located\n" "$YELLOW"
-    read -n1 -rep "${CAT} Would you like to install yay(||)paru (Y)" INST
-    if [[ $INST =~ ^[Yy]$ ]]; then
+    read -n1 -rep "${CAT} Would you like to install yay (Y)" INST
+    if [[ $INST =~ ^[Y]$ ]]; then
         git clone https://aur.archlinux.org/yay.git
         cd yay
         makepkg -si --noconfirm 2>&1 | tee -a $LOG
         cd ..
-           git clone https://aur.archlinux.org/paru.git
+    else
+        git clone https://aur.archlinux.org/paru.git
         cd paru
         makepkg -si --noconfirm 2>&1 | tee -a $LOG
         cd ..
-    
     fi
-# update system before proceed
+    # update system before proceed
     printf "${YELLOW} System Update to avoid issue\n" 
     yay -Syu --noconfirm 2>&1 | tee -a $LOG
 fi
@@ -61,7 +61,7 @@ print_success() {
 
 
 ### Install packages ####
-read -n1 -rep "${CAT} Would you like to install the packages? (y/n)" inst
+read -n1 -rep "${CAT} Would you like to install the packages? (Y)" inst
 echo
 
 if [[ $inst =~ ^[Nn]$ ]]; then
@@ -69,10 +69,10 @@ if [[ $inst =~ ^[Nn]$ ]]; then
             exit 1
         fi
 
-if [[ $inst =~ ^[Yy]$ ]]; then
-   git_pkgs="grimblast-git waybar-hyprland-git" 
-     packages=("waland-git" "wayland-protocols-git" "wayland-utils-git" "hyprland-git" "wlroots-git" "xdg-user-dir" "xdg-user-dirs-gtk" 
-     "xdg-user-dirs-update" "xdg-user-dirs-gtk-update" "dunst" "kitty" "alacrity" "ranger" "polkit-kde-agent" "firefox" "rofi" "wofi" 
+if [[ $inst =~ ^[Y]$ ]]; then
+   yay -S --noconfirm "grimblast-git waybar-hyprland-git" \
+     "waland-git" "wayland-protocols-git" "wayland-utils-git" "hyprland-git" "wlroots-git" "xdg-user-dir" "xdg-user-dirs-gtk" \
+     "xdg-user-dirs-update" "xdg-user-dirs-gtk-update" "dunst" "kitty" "alacrity" "ranger" "polkit-kde-agent" "firefox" "rofi" "wofi" \
      "xdg-desktop-portal-hyprland-git" "xdg-desktop-portal-wlr-git" "xdg-desktop-portal-gtk-git" "waybar-hyprland-git" "qt5-wayland"
       "qt6-wayland" "pipewire" "wireplumber"
      "mako" "cliphist" "clipman" "udiskie" "udisks2" "google-chrome" "vivaldi" "marker" "typhora"
@@ -85,13 +85,9 @@ if [[ $inst =~ ^[Yy]$ ]]; then
    "ttf-jetbrains-mono-nerd ttf-icomoon-feather ttf-iosevka-nerd adobe-source-code-pro-fonts"
    "nwg-look-bin qt5ct btop jq gvfs ffmpegthumbs swww mousepad mpv  playerctl pamixer noise-suppression-for-voice"
    "polkit-gnome ffmpeg neovim viewnior pavucontrol thunar ffmpegthumbnailer xdg-user-dirs-gtk xdg-user-dirs"
-   "nordic-theme papirus-icon-theme starship "
+   "nordic-theme papirus-icon-theme starship " 
 
     yay -R --noconfirm swaylock waybar
-
-    if ! yay -S --noconfirm $git_pkgs $hypr_pkgs $font_pkgs $font_pkgs2 $app_pkgs $app_pkgs2 $theme_pkgs 2>&1 | tee -a $LOG; then
-        print_error " Failed to install additional packages - please check the install.log \n"
-        exit 1
     fi
     xdg-user-dirs-update     xdg-user-dirs-gtk-update
 
@@ -109,69 +105,5 @@ fi
 read -n1 -rep "${CAT} Would you like to copy config files? (y,n)" CFG
 if [[ $CFG =~ ^[Yy]$ ]]; then
     printf " Copying config files...\n"
-    cp -r dotconfig/dunst ~/.config/ 2>&1 | tee -a $LOG
-    cp -r dotconfig/hypr ~/.config/ 2>&1 | tee -a $LOG
-    cp -r dotconfig/kitty ~/.config/ 2>&1 | tee -a $LOG
-    cp -r dotconfig/pipewire ~/.config/ 2>&1 | tee -a $LOG
-    cp -r dotconfig/rofi ~/.config/ 2>&1 | tee -a $LOG
-    cp -r dotconfig/swaylock ~/.config/ 2>&1 | tee -a $LOG
-    cp -r dotconfig/waybar ~/.config/ 2>&1 | tee -a $LOG
-    cp -r dotconfig/wlogout ~/.config/ 2>&1 | tee -a $LOG
-    
-    # Set some files as exacutable 
-    chmod +x ~/.config/hypr/xdg-portal-hyprland
-    chmod +x ~/.config/waybar/scripts/waybar-wttr.py
-fi
-
-### Add Fonts for Waybar ###
-mkdir -p $HOME/Downloads/nerdfonts/
-cd $HOME/Downloads/
-wget https://github.com/ryanoasis/nerd-fonts/releases/download/v2.3.1/CascadiaCode.zip
-unzip '*.zip' -d $HOME/Downloads/nerdfonts/
-rm -rf *.zip
-sudo cp -R $HOME/Downloads/nerdfonts/ /usr/share/fonts/
-
-fc-cache -rv  
-
-### Enable SDDM Autologin ###
-read -n1 -rep 'Would you like to enable SDDM autologin? (y,n)' SDDM
-if [[ $SDDM == "Y" || $SDDM == "y" ]]; then
-    LOC="/etc/sddm.conf"
-    echo -e "The following has been added to $LOC.\n"
-    echo -e "[Autologin]\nUser = $(whoami)\nSession=hyprland" | sudo tee -a $LOC
-    echo -e "\n"
-    echo -e "Enabling SDDM service...\n"
-    sudo systemctl enable sddm
-    sleep 3
-fi
-
-# BLUETOOTH
-read -n1 -rep "${CAT} OPTIONAL - Would you like to install Bluetooth packages? (y/n)" BLUETOOTH
-if [[ $BLUETOOTH =~ ^[Yy]$ ]]; then
-    printf " Installing Bluetooth Packages...\n"
- blue_pkgs="bluez bluez-utils blueman"
-    if ! yay -S --noconfirm $blue_pkgs 2>&1 | tee -a $LOG; then
-       	print_error "Failed to install bluetooth packages - please check the install.log"    
-    printf " Activating Bluetooth Services...\n"
-    sudo systemctl enable --now bluetooth.service
-    sleep 2
-    fi
-else
-    printf "${YELLOW} No bluetooth packages installed..\n"
-	fi
-
-    
-### Script is done ###
-printf "\n${GREEN} Installation Completed.\n"
-echo -e "${GREEN} You can start Hyprland by typing Hyprland (note the capital H).\n"
-read -n1 -rep "${CAT} Would you like to start Hyprland now? (y,n)" HYP
-if [[ $HYP =~ ^[Yy]$ ]]; then
-    if command -v Hyprland >/dev/null; then
-        exec Hyprland
-    else
-         print_error " Hyprland not found. Please make sure Hyprland is installed by checking install.log.\n"
-        exit 1
-    fi
-else
-    exit
+    cp -r dotconfig/dunst ~/.config/ 2>&1 | tee
 fi
